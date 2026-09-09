@@ -1389,6 +1389,7 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 BOLD='\033[1m'
+WHITE='\033[1;37m'
 NC='\033[0m'
 
 read_input() {
@@ -1572,16 +1573,18 @@ uninstall_ctrlmcp() {
     echo -e "${RED}------------------------------------------------------------${NC}"
 
     local CONFIRM=""
-    if [ "$AUTO_CONFIRM" = "-y" ] || [ "$AUTO_CONFIRM" = "--yes" ]; then
-        CONFIRM="yes"
+    if [ "$AUTO_CONFIRM" = "--force" ]; then
+        CONFIRM="DELETE"
     else
-        read_input "Are you sure you want to completely uninstall CTRLMCP? [type 'yes' to confirm]: " CONFIRM
-        CONFIRM="$(printf '%s' "$CONFIRM" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+        echo -e "${RED}${BOLD}🚨 To prevent accidental deletion, you MUST type '${WHITE}DELETE${RED}' in capital letters:${NC}"
+        read_input "Type 'DELETE' to confirm permanent uninstallation: " CONFIRM
+        CONFIRM="$(printf '%s' "$CONFIRM" | tr -d '[:space:]')"
     fi
 
-    if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then
-        echo -e "${GREEN}Uninstallation cancelled. Returning to dashboard...${NC}"
-        sleep 1
+    if [ "$CONFIRM" != "DELETE" ]; then
+        echo -e "${YELLOW}Confirmation failed (you entered: '$CONFIRM').${NC}"
+        echo -e "${GREEN}✓ Uninstallation cancelled safely. Your server and CTRLMCP were NOT modified.${NC}"
+        read_input "Press [Enter] to return to dashboard..." _PAUSE
         return 0
     fi
 
