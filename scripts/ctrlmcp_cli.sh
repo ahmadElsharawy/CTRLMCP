@@ -179,6 +179,90 @@ JSON_EOF
     echo -e "${CYAN}${BOLD}============================================================${NC}"
 }
 
+uninstall_ctrlmcp() {
+    local AUTO_CONFIRM="$1"
+    echo -e "${RED}${BOLD}============================================================${NC}"
+    echo -e "${RED}${BOLD}   ⚠️  CTRLMCP COMPLETE CLEAN UNINSTALL / حذف من الجذور    ${NC}"
+    echo -e "${RED}${BOLD}============================================================${NC}"
+    echo -e "${YELLOW}This will completely remove CTRLMCP and its configurations:${NC}"
+    echo -e "  1. Stop and remove systemd service (${CYAN}ctrlmcp.service${NC})"
+    echo -e "  2. Clean Nginx proxy config & SSL certificate for ${CYAN}${MCP_DOMAIN}${NC}"
+    echo -e "  3. Delete virtual environment & server files in ${CYAN}/opt/ctrlmcp${NC}"
+    echo -e "  4. Delete Bearer tokens & settings in ${CYAN}/etc/ctrlmcp${NC}"
+    echo -e "  5. Remove shell hooks from ${CYAN}/etc/profile.d/ctrlmcp.sh${NC} & bashrc"
+    echo -e "  6. Remove CLI binary (${CYAN}/usr/local/bin/ctrlmcp${NC})"
+    echo
+    echo -e "${GREEN}ℹ System packages (Python, Nginx, Certbot) will remain intact${NC}"
+    echo -e "${GREEN}  so no other services on your server are affected.${NC}"
+    echo -e "${RED}------------------------------------------------------------${NC}"
+
+    local CONFIRM=""
+    if [ "$AUTO_CONFIRM" = "-y" ] || [ "$AUTO_CONFIRM" = "--yes" ]; then
+        CONFIRM="yes"
+    else
+        read_input "Are you sure you want to completely uninstall CTRLMCP? [type 'yes' to confirm]: " CONFIRM
+        CONFIRM="$(printf '%s' "$CONFIRM" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+    fi
+
+    if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then
+        echo -e "${GREEN}Uninstallation cancelled. Returning to dashboard...${NC}"
+        sleep 1
+        return 0
+    fi
+
+    echo
+    echo -e "${BLUE}[1/6] Stopping and disabling ctrlmcp.service...${NC}"
+    systemctl stop ctrlmcp.service 2>/dev/null || true
+    systemctl disable ctrlmcp.service 2>/dev/null || true
+    rm -f /etc/systemd/system/ctrlmcp.service /etc/systemd/system/multi-user.target.wants/ctrlmcp.service
+    systemctl daemon-reload
+    systemctl reset-failed ctrlmcp.service 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Systemd service removed.${NC}"
+
+    echo -e "${BLUE}[2/6] Cleaning Nginx site configuration & SSL certificates...${NC}"
+    rm -f /etc/nginx/sites-enabled/ctrlmcp /etc/nginx/sites-available/ctrlmcp
+    if [ -f "/etc/nginx/sites-available/default" ] && [ -z "$(ls -A /etc/nginx/sites-enabled 2>/dev/null)" ]; then
+        ln -sfn /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>/dev/null || true
+    fi
+    if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx 2>/dev/null || true
+    fi
+    if [ -n "$MCP_DOMAIN" ] && [ "$MCP_DOMAIN" != "localhost" ]; then
+        certbot delete --cert-name "$MCP_DOMAIN" --non-interactive 2>/dev/null || true
+        rm -rf "/etc/letsencrypt/live/$MCP_DOMAIN" "/etc/letsencrypt/archive/$MCP_DOMAIN" "/etc/letsencrypt/renewal/$MCP_DOMAIN.conf" 2>/dev/null || true
+    fi
+    rm -f /var/www/html/install.sh
+    echo -e "${GREEN}  ✓ Nginx & SSL cleaned.${NC}"
+
+    echo -e "${BLUE}[3/6] Removing virtual environment & server files (/opt/ctrlmcp)...${NC}"
+    rm -rf /opt/ctrlmcp
+    echo -e "${GREEN}  ✓ /opt/ctrlmcp deleted.${NC}"
+
+    echo -e "${BLUE}[4/6] Removing credentials, tokens & audit logs...${NC}"
+    rm -rf /etc/ctrlmcp
+    rm -f /var/log/ctrlmcp_audit.log
+    echo -e "${GREEN}  ✓ /etc/ctrlmcp and audit logs deleted.${NC}"
+
+    echo -e "${BLUE}[5/6] Cleaning shell integrations & hooks...${NC}"
+    rm -f /etc/profile.d/ctrlmcp.sh
+    sed -i '/ctrlmcp/d' /etc/bash.bashrc 2>/dev/null || true
+    echo -e "${GREEN}  ✓ Shell profile hooks removed.${NC}"
+
+    echo -e "${BLUE}[6/6] Removing CLI binary (/usr/local/bin/ctrlmcp)...${NC}"
+    rm -f /usr/local/bin/ctrlmcp /usr/local/bin/CtrlMCP /usr/local/bin/CTRLMCP 2>/dev/null || true
+    echo -e "${GREEN}  ✓ CLI binary removed.${NC}"
+
+    echo
+    echo -e "${GREEN}${BOLD}============================================================${NC}"
+    echo -e "${GREEN}${BOLD}   ✓ CTRLMCP COMPLETELY UNINSTALLED FROM ROOTS SUCCESSFUL!  ${NC}"
+    echo -e "${GREEN}${BOLD}============================================================${NC}"
+    echo -e "Your server is 100% clean as if CTRLMCP was never installed."
+    echo -e "To reinstall anytime on a clean slate, run:"
+    echo -e "  ${CYAN}${BOLD}curl -sSL https://raw.githubusercontent.com/ahmadElsharawy/CTRLMCP/main/install.sh | bash${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    exit 0
+}
+
 interactive_menu() {
     if ! [ -t 0 ] && ! [ -c /dev/tty ]; then
         show_info
@@ -197,11 +281,12 @@ interactive_menu() {
         echo -e "  ${CYAN}${BOLD}[4]${NC} 📜 View Live Logs (عرض السجلات المباشرة)"
         echo -e "  ${GREEN}${BOLD}[5]${NC} 🔒 Fix / Install Official SSL (تثبيت شهادة SSL الرسمية لكلود)"
         echo -e "  ${YELLOW}${BOLD}[6]${NC} 📋 Refresh Screen (تحديث الشاشة)"
+        echo -e "  ${RED}${BOLD}[7]${NC} 🗑️  Full Clean Uninstall (حذف الأداة بالكامل من جذورها)"
         echo -e "  ${RED}${BOLD}[0]${NC} 🚪 Exit (خروج)"
         echo -e "${CYAN}------------------------------------------------------------${NC}"
         
         local CHOICE=""
-        if ! read_input "Choose an option [0-6]: " CHOICE; then
+        if ! read_input "Choose an option [0-7]: " CHOICE; then
             echo -e "\n${GREEN}Goodbye!${NC}"
             exit 0
         fi
@@ -303,12 +388,15 @@ except Exception:
                 ;;
             6)
                 ;;
+            7)
+                uninstall_ctrlmcp
+                ;;
             0|q|Q|exit)
                 echo -e "${GREEN}Goodbye!${NC}"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid choice: '${CHOICE}'. Please choose 0 to 6.${NC}"
+                echo -e "${RED}Invalid choice: '${CHOICE}'. Please choose 0 to 7.${NC}"
                 sleep 1
                 ;;
         esac
@@ -320,6 +408,10 @@ ACTION="${1:-menu}"
 ACTION=$(printf '%s' "$ACTION" | tr '[:upper:]' '[:lower:]')
 
 case "$ACTION" in
+    uninstall|remove|purge)
+        uninstall_ctrlmcp "$2"
+        exit 0
+        ;;
     status)
         systemctl status ctrlmcp.service --no-pager
         exit 0

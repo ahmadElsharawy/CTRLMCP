@@ -272,9 +272,12 @@ CTRLMCP set-token my-custom-password
 
 # Generate a new random 256-bit Bearer token directly
 CTRLMCP rand-token
+
+# Completely uninstall CTRLMCP from roots (clean uninstallation)
+CTRLMCP uninstall
 ```
 
-*(Aliases supported: `CTRLMCP`, `ctrlmcp`, `CTRLMCP` - case-insensitive)*
+*(Aliases supported: `CTRLMCP`, `ctrlmcp`, `CtrlMCP` - case-insensitive)*
 
 ---
 
