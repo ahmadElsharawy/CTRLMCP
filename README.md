@@ -1,6 +1,6 @@
 # CTRLMCP - Generic Administrative MCP Server for Ubuntu 🚀
 
-[![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/ahmadElsharawy/CTRLMCP/releases)
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](https://github.com/ahmadElsharawy/CTRLMCP/releases)
 [![Protocol](https://img.shields.io/badge/protocol-MCP%20Streamable%20HTTP-success.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Ubuntu%2020.04%20|%2022.04%20|%2024.04-orange.svg)](https://ubuntu.com/)
