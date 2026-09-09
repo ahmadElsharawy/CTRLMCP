@@ -1,0 +1,20 @@
+[Unit]
+Description=CTRLMCP Streamable HTTP Server
+After=network.target
+Documentation=https://modelcontextprotocol.io/
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ctrlmcp
+EnvironmentFile=-/etc/ctrlmcp/env
+ExecStart=/opt/ctrlmcp/venv/bin/python /opt/ctrlmcp/server.py
+Restart=always
+RestartSec=5s
+
+# Security and Sandbox options
+LimitNOFILE=65536
+TimeoutStopSec=20s
+
+[Install]
+WantedBy=multi-user.target
